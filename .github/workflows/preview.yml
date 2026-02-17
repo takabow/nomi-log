@@ -1,0 +1,41 @@
+name: Preview Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches-ignore: [ main ]
+  pull_request:
+
+jobs:
+  preview-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Run Tests
+        run: bun run test
+
+      - name: Build
+        run: bun run build
+
+      - name: Publish to Cloudflare Pages (Preview)
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: nomi-log
+          directory: dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
