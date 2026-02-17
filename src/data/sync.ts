@@ -45,17 +45,25 @@ export async function pushToSheets(): Promise<{ updated: number }> {
     const unsynced = await db.records.filter(r => !r.synced).toArray();
     if (unsynced.length === 0) return { updated: 0 };
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const payload = unsynced.map(({ synced: _synced, ...rest }) => rest);
-
-    const res = await fetch(url, {
+    const res = await fetch(getGasUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ records: payload }),
+        body: JSON.stringify({
+            apiVersion: 1,
+            type: 'records',
+            action: 'save',
+            records: unsynced
+        })
     });
 
     if (!res.ok) throw new Error(`Sheets push failed: ${res.status}`);
-    const result = await res.json();
+    const json = await res.json();
+
+    // Check version and error
+    if (!checkGasVersion(json)) return { updated: 0 };
+    if (!json.ok) throw new Error(`GAS Error: ${json.error}`);
+
+    const result = json.data;
 
     await db.transaction('rw', db.records, async () => {
         for (const rec of unsynced) {
@@ -72,10 +80,24 @@ export async function pushToSheets(): Promise<{ updated: number }> {
 export async function pullFromSheets(): Promise<{ merged: number }> {
     const url = getGasUrl();
     if (!url) throw new Error('GAS URL が未設定です');
+    // Use POST for read as well (Strict API)
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+            apiVersion: 1,
+            type: 'records',
+            action: 'get'
+        })
+    });
 
-    const res = await fetch(url);
     if (!res.ok) throw new Error(`Sheets pull failed: ${res.status}`);
-    const data = await res.json();
+    const json = await res.json();
+
+    if (!checkGasVersion(json)) return { merged: 0 };
+    if (!json.ok) throw new Error(`GAS Error: ${json.error}`);
+    const data = json.data;
+
     const rawRecords = data.records ?? [];
 
     // Normalize date to yyyy-MM-dd to ensure compatibility with Analytics/Calendar
@@ -126,29 +148,66 @@ export async function pushSettings(): Promise<{ updated: number }> {
         'nomi-log-default-type-id': localStorage.getItem('nomi-log-default-type-id'),
     };
 
-    // Append ?type=settings
-    const settingsUrl = url.includes('?') ? `${url}&type=settings` : `${url}?type=settings`;
+    const urlObj = new URL(url);
+    // No query params needed for Strict API
+    const settingsUrl = urlObj.toString();
 
-    const res = await fetch(settingsUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ settings }),
-    });
+    console.log('[nomi-log] pushSettings URL:', settingsUrl);
 
-    if (!res.ok) throw new Error(`Settings push failed: ${res.status}`);
-    const result = await res.json();
-    return { updated: result.updated ?? 0 };
+    try {
+        const res = await fetch(settingsUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({
+                apiVersion: 1,
+                type: 'settings',
+                action: 'save',
+                settings
+            }),
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Settings push failed: ${res.status} ${text}`);
+        }
+
+        const json = await res.json();
+        console.log('[nomi-log] pushSettings result:', json);
+
+        if (!checkGasVersion(json)) return { updated: 0 };
+        if (!json.ok) throw new Error(`GAS Error: ${json.error}`);
+
+        const result = json.data;
+        return { updated: result.updated ?? 0 };
+    } catch (e) {
+        console.error('[nomi-log] pushSettings error:', e);
+        throw e;
+    }
 }
 
 export async function pullSettings(): Promise<{ updated: number }> {
     const url = getGasUrl();
     if (!url) return { updated: 0 };
 
-    const settingsUrl = url.includes('?') ? `${url}&type=settings` : `${url}?type=settings`;
+    const settingsUrl = getGasUrl(); // Plain URL for POST
 
-    const res = await fetch(settingsUrl);
+    const res = await fetch(settingsUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+            apiVersion: 1,
+            type: 'settings',
+            action: 'get'
+        })
+    });
+
     if (!res.ok) throw new Error(`Settings pull failed: ${res.status}`);
-    const data = await res.json();
+    const json = await res.json();
+
+    if (!checkGasVersion(json)) return { updated: 0 };
+    if (!json.ok) throw new Error(`GAS Error: ${json.error}`);
+    const data = json.data;
+
     const remoteSettings = data.settings || {};
 
     let updated = 0;
@@ -185,13 +244,35 @@ export async function fullSync(): Promise<{ pushed: number; pulled: number; sett
 /* ──────────────── Background Sync (non-blocking) ──────────────── */
 
 
-export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
+export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error' | 'update_required';
 
 export const SYNC_EVENT_NAME = 'nomi-log-sync-status';
 
 export function dispatchSyncStatus(status: SyncStatus, message?: string) {
     console.log('[nomi-log] dispatchSyncStatus:', status, message);
     window.dispatchEvent(new CustomEvent(SYNC_EVENT_NAME, { detail: { status, message } }));
+}
+
+// Minimum required version of GAS script
+const REQUIRED_GAS_VERSION_DATE = '2026-02-18-final';
+
+interface GasResponse {
+    ok: boolean;
+    version?: string;
+    apiVersion?: number;
+    data?: unknown;
+    error?: string;
+}
+
+function checkGasVersion(response: unknown): boolean {
+    const r = response as GasResponse;
+    const version = r.version;
+    if (!version || version < REQUIRED_GAS_VERSION_DATE) {
+        console.warn('[nomi-log] GAS version outdated:', version, 'required:', REQUIRED_GAS_VERSION_DATE);
+        dispatchSyncStatus('update_required', 'GASスクリプトの更新が必要です');
+        return false;
+    }
+    return true;
 }
 
 export function trySync(): void {
