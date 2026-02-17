@@ -45,11 +45,11 @@ export async function pushToSheets(): Promise<{ updated: number }> {
     const unsynced = await db.records.filter(r => !r.synced).toArray();
     if (unsynced.length === 0) return { updated: 0 };
 
-    // Use plain URL, no query params
     const res = await fetch(getGasUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
+            apiVersion: 1,
             type: 'records',
             action: 'save',
             records: unsynced
@@ -85,6 +85,7 @@ export async function pullFromSheets(): Promise<{ merged: number }> {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
+            apiVersion: 1,
             type: 'records',
             action: 'get'
         })
@@ -158,6 +159,7 @@ export async function pushSettings(): Promise<{ updated: number }> {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
+                apiVersion: 1,
                 type: 'settings',
                 action: 'save',
                 settings
@@ -193,6 +195,7 @@ export async function pullSettings(): Promise<{ updated: number }> {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
+            apiVersion: 1,
             type: 'settings',
             action: 'get'
         })
@@ -251,7 +254,7 @@ export function dispatchSyncStatus(status: SyncStatus, message?: string) {
 }
 
 // Minimum required version of GAS script
-const REQUIRED_GAS_VERSION_DATE = '2026-02-18-strict';
+const REQUIRED_GAS_VERSION_DATE = '2026-02-18-final';
 
 function checkGasVersion(response: any): boolean {
     const version = response.version;
