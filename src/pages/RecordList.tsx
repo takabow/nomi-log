@@ -231,7 +231,7 @@ function SwipeableRecordItem({
                                         e.stopPropagation();
                                         onOkawari(record);
                                     }}
-                                    className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-all border border-transparent hover:border-primary/20 sm:hidden" // Hide on desktop if needed, or keep
+                                    className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-all border border-transparent hover:border-primary/20"
                                     title="おかわり (複製して追加)"
                                 >
                                     <span className="block w-6 h-6 bg-primary/20 rounded-full flex items-center justify-center text-primary text-xs font-bold">+</span>

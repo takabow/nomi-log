@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.1] - 2026-02-17
+
+### Fixed
+- **Record List**: Correctly display beer mug icon (🍺) for "Craft Beer" records.
+- **Bulk Edit**: Include "Craft Beer" and custom drink types in the type dropdown.
+- **UI**: Show "Okawari" (refill) button on desktop screens (previously hidden).
+
+### Changed
+- **Daily Summary**: Optimized layout for mobile devices by splitting label and values into two lines.
+
 ## [1.0.0] - 2026-02-17
 
 ### Features
