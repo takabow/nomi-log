@@ -1,0 +1,202 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@theme {
+  --color-primary: #F5A623;
+  --color-primary-dark: #E09000;
+  --color-primary-light: #FFD080;
+  --color-bg-dark: #0f0f14;
+  --color-bg-card: rgba(255, 255, 255, 0.04);
+  --color-bg-surface: rgba(255, 255, 255, 0.07);
+  --color-bg-glass: rgba(255, 255, 255, 0.06);
+  --color-text-primary: #f0f0f5;
+  --color-text-secondary: #8e8ea0;
+  --color-text-muted: #555566;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-light: rgba(255, 255, 255, 0.12);
+  --color-danger: #ff4757;
+  --color-success: #2ed573;
+  --color-accent-blue: #5b8cff;
+  --color-accent-purple: #a855f7;
+  --color-accent-teal: #2dd4bf;
+}
+
+/* Tailwind v4 Preflight already handles the CSS reset via @layer,
+   so no custom * { margin/padding/box-sizing } is needed here. */
+
+html {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-bg-dark);
+  color: var(--color-text-primary);
+  min-height: 100dvh;
+  overscroll-behavior: none;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(245, 166, 35, 0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(91, 140, 255, 0.05), transparent);
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Glass card utility */
+.glass-card {
+  background: var(--color-bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+}
+
+.glass-card-sm {
+  background: var(--color-bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+/* Smooth transitions */
+.btn-press {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-press:active {
+  transform: scale(0.96);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Shimmer glow for FAB */
+@keyframes glow-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(245, 166, 35, 0.3), 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 30px rgba(245, 166, 35, 0.5), 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.fab-glow {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* Fade-in animation */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in-up 0.4s ease-out both;
+}
+
+/* Stagger children */
+.stagger-children>* {
+  animation: fade-in-up 0.35s ease-out both;
+}
+
+.stagger-children>*:nth-child(1) {
+  animation-delay: 0.03s;
+}
+
+.stagger-children>*:nth-child(2) {
+  animation-delay: 0.06s;
+}
+
+.stagger-children>*:nth-child(3) {
+  animation-delay: 0.09s;
+}
+
+.stagger-children>*:nth-child(4) {
+  animation-delay: 0.12s;
+}
+
+.stagger-children>*:nth-child(5) {
+  animation-delay: 0.15s;
+}
+
+.stagger-children>*:nth-child(6) {
+  animation-delay: 0.18s;
+}
+
+.stagger-children>*:nth-child(7) {
+  animation-delay: 0.21s;
+}
+
+.stagger-children>*:nth-child(8) {
+  animation-delay: 0.24s;
+}
+
+.stagger-children>*:nth-child(9) {
+  animation-delay: 0.27s;
+}
+
+.stagger-children>*:nth-child(10) {
+  animation-delay: 0.30s;
+}
+
+.stagger-children>*:nth-child(11) {
+  animation-delay: 0.33s;
+}
+
+.stagger-children>*:nth-child(12) {
+  animation-delay: 0.36s;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+/* Input styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+}
+
+select,
+input {
+  color-scheme: dark;
+}
+
+/* Hide scrollbar for swipe actions */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
