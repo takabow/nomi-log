@@ -126,18 +126,35 @@ export async function pushSettings(): Promise<{ updated: number }> {
         'nomi-log-default-type-id': localStorage.getItem('nomi-log-default-type-id'),
     };
 
-    // Append ?type=settings
-    const settingsUrl = url.includes('?') ? `${url}&type=settings` : `${url}?type=settings`;
+    // Robustly append ?type=settings for GAS compatibility (and for logs)
+    const urlObj = new URL(url);
+    urlObj.searchParams.set('type', 'settings');
+    const settingsUrl = urlObj.toString();
 
-    const res = await fetch(settingsUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ settings }),
-    });
+    console.log('[nomi-log] pushSettings URL:', settingsUrl);
 
-    if (!res.ok) throw new Error(`Settings push failed: ${res.status}`);
-    const result = await res.json();
-    return { updated: result.updated ?? 0 };
+    try {
+        const res = await fetch(settingsUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({
+                type: 'settings', // Redundant but robust (for updated GAS)
+                settings
+            }),
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Settings push failed: ${res.status} ${text}`);
+        }
+
+        const result = await res.json();
+        console.log('[nomi-log] pushSettings result:', result);
+        return { updated: result.updated ?? 0 };
+    } catch (e) {
+        console.error('[nomi-log] pushSettings error:', e);
+        throw e;
+    }
 }
 
 export async function pullSettings(): Promise<{ updated: number }> {

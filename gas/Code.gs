@@ -96,14 +96,28 @@ function doGet(e) {
  * - type=settings: 設定を upsert (key ベース)
  */
 function doPost(e) {
+  const lock = LockService.getScriptLock();
+  // Wait up to 10 seconds for other processes to finish
+  if (!lock.tryLock(10000)) {
+    return jsonResponse({ error: 'Server is busy, please try again.' }, 503);
+  }
+
   try {
-    const type = e.parameter.type || 'records';
-    const body = JSON.parse(e.postData.contents);
+    let body = {};
+    try {
+      body = JSON.parse(e.postData.contents);
+    } catch (err) {
+      // If body is empty or invalid JSON, body remains {}
+    }
+
+    // Fallback: check query param first, then body
+    const type = e.parameter.type || body.type || 'records';
 
     if (type === 'settings') {
       const sheet = getOrCreateSheetSettings();
       const incoming = body.settings || {}; // { key: value, ... }
       const keys = Object.keys(incoming);
+      // Even if keys is empty, we return updated: 0 success
       if (keys.length === 0) return jsonResponse({ updated: 0 });
 
       const data = sheet.getDataRange().getValues();
@@ -160,8 +174,11 @@ function doPost(e) {
     });
 
     return jsonResponse({ updated });
+
   } catch (err) {
     return jsonResponse({ error: err.message }, 500);
+  } finally {
+    lock.releaseLock();
   }
 }
 
