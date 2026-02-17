@@ -183,7 +183,12 @@ function doPost(e) {
 }
 
 function jsonResponse(data, code) {
+  // Always include version for client-side check
+  const payload = {
+    ...data,
+    version: '2026-02-18',
+  };
   return ContentService
-    .createTextOutput(JSON.stringify(data))
+    .createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
 }

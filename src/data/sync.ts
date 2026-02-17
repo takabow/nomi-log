@@ -56,6 +56,7 @@ export async function pushToSheets(): Promise<{ updated: number }> {
 
     if (!res.ok) throw new Error(`Sheets push failed: ${res.status}`);
     const result = await res.json();
+    if (!checkGasVersion(result)) return { updated: 0 };
 
     await db.transaction('rw', db.records, async () => {
         for (const rec of unsynced) {
@@ -76,6 +77,7 @@ export async function pullFromSheets(): Promise<{ merged: number }> {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Sheets pull failed: ${res.status}`);
     const data = await res.json();
+    if (!checkGasVersion(data)) return { merged: 0 };
     const rawRecords = data.records ?? [];
 
     // Normalize date to yyyy-MM-dd to ensure compatibility with Analytics/Calendar
@@ -150,6 +152,7 @@ export async function pushSettings(): Promise<{ updated: number }> {
 
         const result = await res.json();
         console.log('[nomi-log] pushSettings result:', result);
+        if (!checkGasVersion(result)) return { updated: 0 };
         return { updated: result.updated ?? 0 };
     } catch (e) {
         console.error('[nomi-log] pushSettings error:', e);
@@ -166,6 +169,7 @@ export async function pullSettings(): Promise<{ updated: number }> {
     const res = await fetch(settingsUrl);
     if (!res.ok) throw new Error(`Settings pull failed: ${res.status}`);
     const data = await res.json();
+    if (!checkGasVersion(data)) return { updated: 0 };
     const remoteSettings = data.settings || {};
 
     let updated = 0;
@@ -202,13 +206,26 @@ export async function fullSync(): Promise<{ pushed: number; pulled: number; sett
 /* ──────────────── Background Sync (non-blocking) ──────────────── */
 
 
-export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
+export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error' | 'update_required';
 
 export const SYNC_EVENT_NAME = 'nomi-log-sync-status';
 
 export function dispatchSyncStatus(status: SyncStatus, message?: string) {
     console.log('[nomi-log] dispatchSyncStatus:', status, message);
     window.dispatchEvent(new CustomEvent(SYNC_EVENT_NAME, { detail: { status, message } }));
+}
+
+// Minimum required version of GAS script
+const REQUIRED_GAS_VERSION_DATE = '2026-02-18';
+
+function checkGasVersion(response: any): boolean {
+    const version = response.version;
+    if (!version || version < REQUIRED_GAS_VERSION_DATE) {
+        console.warn('[nomi-log] GAS version outdated:', version, 'required:', REQUIRED_GAS_VERSION_DATE);
+        dispatchSyncStatus('update_required', 'GASスクリプトの更新が必要です');
+        return false;
+    }
+    return true;
 }
 
 export function trySync(): void {
