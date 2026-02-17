@@ -256,8 +256,17 @@ export function dispatchSyncStatus(status: SyncStatus, message?: string) {
 // Minimum required version of GAS script
 const REQUIRED_GAS_VERSION_DATE = '2026-02-18-final';
 
-function checkGasVersion(response: any): boolean {
-    const version = response.version;
+interface GasResponse {
+    ok: boolean;
+    version?: string;
+    apiVersion?: number;
+    data?: unknown;
+    error?: string;
+}
+
+function checkGasVersion(response: unknown): boolean {
+    const r = response as GasResponse;
+    const version = r.version;
     if (!version || version < REQUIRED_GAS_VERSION_DATE) {
         console.warn('[nomi-log] GAS version outdated:', version, 'required:', REQUIRED_GAS_VERSION_DATE);
         dispatchSyncStatus('update_required', 'GASスクリプトの更新が必要です');
