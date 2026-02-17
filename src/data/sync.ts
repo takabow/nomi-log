@@ -45,18 +45,25 @@ export async function pushToSheets(): Promise<{ updated: number }> {
     const unsynced = await db.records.filter(r => !r.synced).toArray();
     if (unsynced.length === 0) return { updated: 0 };
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const payload = unsynced.map(({ synced: _synced, ...rest }) => rest);
-
-    const res = await fetch(url, {
+    // Use plain URL, no query params
+    const res = await fetch(getGasUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ records: payload }),
+        body: JSON.stringify({
+            type: 'records',
+            action: 'save',
+            records: unsynced
+        })
     });
 
     if (!res.ok) throw new Error(`Sheets push failed: ${res.status}`);
-    const result = await res.json();
-    if (!checkGasVersion(result)) return { updated: 0 };
+    const json = await res.json();
+
+    // Check version and error
+    if (!checkGasVersion(json)) return { updated: 0 };
+    if (!json.ok) throw new Error(`GAS Error: ${json.error}`);
+
+    const result = json.data;
 
     await db.transaction('rw', db.records, async () => {
         for (const rec of unsynced) {
@@ -73,11 +80,23 @@ export async function pushToSheets(): Promise<{ updated: number }> {
 export async function pullFromSheets(): Promise<{ merged: number }> {
     const url = getGasUrl();
     if (!url) throw new Error('GAS URL が未設定です');
+    // Use POST for read as well (Strict API)
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+            type: 'records',
+            action: 'get'
+        })
+    });
 
-    const res = await fetch(url);
     if (!res.ok) throw new Error(`Sheets pull failed: ${res.status}`);
-    const data = await res.json();
-    if (!checkGasVersion(data)) return { merged: 0 };
+    const json = await res.json();
+
+    if (!checkGasVersion(json)) return { merged: 0 };
+    if (!json.ok) throw new Error(`GAS Error: ${json.error}`);
+    const data = json.data;
+
     const rawRecords = data.records ?? [];
 
     // Normalize date to yyyy-MM-dd to ensure compatibility with Analytics/Calendar
@@ -128,9 +147,8 @@ export async function pushSettings(): Promise<{ updated: number }> {
         'nomi-log-default-type-id': localStorage.getItem('nomi-log-default-type-id'),
     };
 
-    // Robustly append ?type=settings for GAS compatibility (and for logs)
     const urlObj = new URL(url);
-    urlObj.searchParams.set('type', 'settings');
+    // No query params needed for Strict API
     const settingsUrl = urlObj.toString();
 
     console.log('[nomi-log] pushSettings URL:', settingsUrl);
@@ -140,7 +158,8 @@ export async function pushSettings(): Promise<{ updated: number }> {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
-                type: 'settings', // Redundant but robust (for updated GAS)
+                type: 'settings',
+                action: 'save',
                 settings
             }),
         });
@@ -150,9 +169,13 @@ export async function pushSettings(): Promise<{ updated: number }> {
             throw new Error(`Settings push failed: ${res.status} ${text}`);
         }
 
-        const result = await res.json();
-        console.log('[nomi-log] pushSettings result:', result);
-        if (!checkGasVersion(result)) return { updated: 0 };
+        const json = await res.json();
+        console.log('[nomi-log] pushSettings result:', json);
+
+        if (!checkGasVersion(json)) return { updated: 0 };
+        if (!json.ok) throw new Error(`GAS Error: ${json.error}`);
+
+        const result = json.data;
         return { updated: result.updated ?? 0 };
     } catch (e) {
         console.error('[nomi-log] pushSettings error:', e);
@@ -164,12 +187,24 @@ export async function pullSettings(): Promise<{ updated: number }> {
     const url = getGasUrl();
     if (!url) return { updated: 0 };
 
-    const settingsUrl = url.includes('?') ? `${url}&type=settings` : `${url}?type=settings`;
+    const settingsUrl = getGasUrl(); // Plain URL for POST
 
-    const res = await fetch(settingsUrl);
+    const res = await fetch(settingsUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+            type: 'settings',
+            action: 'get'
+        })
+    });
+
     if (!res.ok) throw new Error(`Settings pull failed: ${res.status}`);
-    const data = await res.json();
-    if (!checkGasVersion(data)) return { updated: 0 };
+    const json = await res.json();
+
+    if (!checkGasVersion(json)) return { updated: 0 };
+    if (!json.ok) throw new Error(`GAS Error: ${json.error}`);
+    const data = json.data;
+
     const remoteSettings = data.settings || {};
 
     let updated = 0;
@@ -216,7 +251,7 @@ export function dispatchSyncStatus(status: SyncStatus, message?: string) {
 }
 
 // Minimum required version of GAS script
-const REQUIRED_GAS_VERSION_DATE = '2026-02-18';
+const REQUIRED_GAS_VERSION_DATE = '2026-02-18-strict';
 
 function checkGasVersion(response: any): boolean {
     const version = response.version;
