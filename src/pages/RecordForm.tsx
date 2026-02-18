@@ -30,11 +30,21 @@ export default function RecordForm() {
     const [amountMl, setAmountMl] = useState(existing?.amountMl ?? 350);
     const [typeName, setTypeName] = useState<string>(existing?.type ?? defaultType.name);
 
+    // Update state when existing record is loaded
+    useEffect(() => {
+        if (existing) {
+            setDate(existing.date);
+            setPercentage(existing.percentage);
+            setAmountMl(existing.amountMl);
+            setTypeName(existing.type);
+            setName(existing.name || '');
+        }
+    }, [existing]);
+
     // Helper to find type by name
     const currentTypeObj = drinkTypes.find(d => d.name === typeName) || { emoji: '🍺', name: typeName, percent: 5, id: 'custom' };
 
     const [name, setName] = useState(existing?.name ?? '');
-    // loaded state not needed with key-based remounting
 
     // Volume dropdown state
     const [showDropdown, setShowDropdown] = useState(false);
