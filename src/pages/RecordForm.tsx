@@ -29,8 +29,10 @@ export default function RecordForm() {
     const [percentage, setPercentage] = useState(existing?.percentage ?? defaultType.percent);
     const [amountMl, setAmountMl] = useState(existing?.amountMl ?? 350);
     const [typeName, setTypeName] = useState<string>(existing?.type ?? defaultType.name);
+    const [name, setName] = useState(existing?.name ?? '');
 
     // Update state when existing record is loaded
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (existing) {
             setDate(existing.date);
@@ -43,8 +45,6 @@ export default function RecordForm() {
 
     // Helper to find type by name
     const currentTypeObj = drinkTypes.find(d => d.name === typeName) || { emoji: '🍺', name: typeName, percent: 5, id: 'custom' };
-
-    const [name, setName] = useState(existing?.name ?? '');
 
     // Volume dropdown state
     const [showDropdown, setShowDropdown] = useState(false);
