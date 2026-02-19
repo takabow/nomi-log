@@ -58,7 +58,7 @@ function calculateDateState(offsetHour: number) {
     const day = logicalDate.getDate();
 
     // YYYY-MM-DD (local)
-    const dateStr = `${year} -${String(month).padStart(2, '0')} -${String(day).padStart(2, '0')} `;
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
     // e.g. "2/19"
     const displayDate = `${month}/${day}`;
