@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "release": "bash scripts/release.sh",
-    "test": "vitest"
+    "test": "vitest",
+    "prepare": "simple-git-hooks"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
@@ -39,11 +40,16 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "jsdom": "^28.1.0",
+    "lint-staged": "^15.2.10",
+    "simple-git-hooks": "^2.11.1",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
     "vite": "^7.3.1",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.18"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "export PATH=$HOME/.bun/bin:$PATH && bun run lint && bun run test"
   }
 }
