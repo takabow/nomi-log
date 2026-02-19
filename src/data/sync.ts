@@ -77,7 +77,7 @@ export async function pushToSheets(): Promise<{ updated: number }> {
 
 /* ──────────────── Pull (Sheets → App) ──────────────── */
 
-export async function pullFromSheets(): Promise<{ merged: number }> {
+export async function pullFromSheets(since?: string): Promise<{ merged: number }> {
     const url = getGasUrl();
     if (!url) throw new Error('GAS URL が未設定です');
     // Use POST for read as well (Strict API)
@@ -87,7 +87,8 @@ export async function pullFromSheets(): Promise<{ merged: number }> {
         body: JSON.stringify({
             apiVersion: 1,
             type: 'records',
-            action: 'get'
+            action: 'get',
+            since: since
         })
     });
 
@@ -288,19 +289,32 @@ export function trySync(): void {
     console.log('[nomi-log] trySync started');
     dispatchSyncStatus('syncing');
 
-    pushToSheets()
+    // Bidirectional sync
+    executeBidirectionalSync()
         .then((res) => {
-            console.log('[nomi-log] trySync success, updated:', res.updated);
-            if (res.updated > 0) {
-                dispatchSyncStatus('success', '同期しました');
+            if (res.pushed > 0 || res.pulled > 0) {
+                dispatchSyncStatus('success', `同期: ↑${res.pushed} ↓${res.pulled}`);
             } else {
-                dispatchSyncStatus('idle'); // No updates, just silent
+                dispatchSyncStatus('idle');
             }
         })
         .catch(err => {
-            console.warn('[nomi-log sync] background push failed:', err.message);
+            console.warn('[nomi-log sync] background sync failed:', err.message);
             dispatchSyncStatus('error', '同期に失敗しました');
         });
+}
+
+async function executeBidirectionalSync() {
+    // Capture last sync time BEFORE push.
+    // This ensures we pull changes that happened since the last successful sync.
+    const lastSync = getLastSyncTime();
+
+    const pushRes = await pushToSheets();
+
+    // incremental pull
+    const pullRes = await pullFromSheets(lastSync);
+
+    return { pushed: pushRes.updated, pulled: pullRes.merged };
 }
 
 /* ──────────────── Unsynced Count ──────────────── */
