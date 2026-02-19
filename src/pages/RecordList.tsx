@@ -11,9 +11,11 @@ import { getDrinkTypes } from '../data/drinkTypes';
 
 
 import DailySummary from '../components/DailySummary';
+import { useDateWithOffset } from '../hooks/useDateWithOffset';
 
 export default function RecordList() {
     const navigate = useNavigate();
+    const { dateStr: today, isLateNight, displayDate } = useDateWithOffset();
     const records = useLiveQuery(
         () => db.records.filter(r => !r.deleted).reverse().sortBy('date'),
     );
@@ -93,7 +95,6 @@ export default function RecordList() {
     }, {});
 
     const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
-    const today = new Date().toISOString().split('T')[0];
 
     const formatDate = (dateStr: string) => {
         const d = new Date(dateStr);
@@ -117,7 +118,12 @@ export default function RecordList() {
                         </h1>
                         {/* Daily Summary (Inline) */}
                         <div className="mt-0.5">
-                            <DailySummary records={records} dateStr={today} coefMap={coefMap} />
+                            <DailySummary
+                                records={records}
+                                dateStr={today}
+                                coefMap={coefMap}
+                                label={isLateNight ? `${displayDate} (深夜)` : `${displayDate}の記録`}
+                            />
                         </div>
                     </div>
                     <button

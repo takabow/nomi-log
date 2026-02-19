@@ -6,9 +6,10 @@ interface Props {
     records: DrinkingRecord[];
     dateStr: string; // YYYY-MM-DD
     coefMap?: Record<string, number>;
+    label?: string; // Optional custom label (e.g. "2/19 (深夜)")
 }
 
-export default function DailySummary({ records, dateStr, coefMap }: Props) {
+export default function DailySummary({ records, dateStr, coefMap, label }: Props) {
     const summary = useMemo(() => {
         // Filter records for the specific date
         const targetRecords = records.filter(r => r.date === dateStr);
@@ -37,7 +38,7 @@ export default function DailySummary({ records, dateStr, coefMap }: Props) {
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-3 px-3 py-2 sm:py-1 bg-bg-surface/50 rounded-lg border border-border/50 animate-fade-in">
             {/* Label */}
-            <span className="text-[10px] font-bold text-text-muted shrink-0">今日の記録</span>
+            <span className="text-[10px] font-bold text-text-muted shrink-0">{label || '今日の記録'}</span>
 
             {/* Values */}
             <div className="flex items-center gap-3">

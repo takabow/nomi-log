@@ -7,6 +7,7 @@ import { getVolumePresets } from '../data/volumePresets';
 import { getDrinkTypes, getDefaultTypeId } from '../data/drinkTypes';
 import { trySync } from '../data/sync';
 
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useRef, useEffect } from 'react';
 
 export default function RecordForm() {
@@ -32,7 +33,6 @@ export default function RecordForm() {
     const [name, setName] = useState(existing?.name ?? '');
 
     // Update state when existing record is loaded
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (existing) {
             setDate(existing.date);
