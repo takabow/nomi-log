@@ -1,7 +1,10 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { RefreshCw, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 export default function ReloadPrompt() {
+    const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
+
     const {
         offlineReady: [offlineReady, setOfflineReady],
         needRefresh: [needRefresh, setNeedRefresh],
@@ -9,6 +12,7 @@ export default function ReloadPrompt() {
     } = useRegisterSW({
         onRegistered(r) {
             console.log('SW Registered:', r);
+            if (r) registrationRef.current = r;
         },
         onRegisterError(error) {
             console.log('SW Registration Error:', error);
@@ -20,6 +24,39 @@ export default function ReloadPrompt() {
         setNeedRefresh(false);
     };
 
+    // Check for updates on visibility change (app switch) or focus
+    useEffect(() => {
+        const update = () => {
+            if (document.visibilityState === 'visible' && registrationRef.current) {
+                console.log('Checking for SW update...');
+                registrationRef.current.update().catch(err => console.error('SW update check failed:', err));
+            }
+        };
+
+        document.addEventListener('visibilitychange', update);
+        window.addEventListener('focus', update);
+
+        // Check immediately on mount
+        update();
+
+        return () => {
+            document.removeEventListener('visibilitychange', update);
+            window.removeEventListener('focus', update);
+        };
+    }, []);
+
+    // Auto-update when new version is available
+    useEffect(() => {
+        if (needRefresh) {
+            console.log('New content available, auto-updating...');
+            updateServiceWorker(true);
+        }
+    }, [needRefresh, updateServiceWorker]);
+
+    // If auto-updating, we might not need to render the prompt, but keeping it as fallback or visual feedback is fine.
+    // However, if we auto-update, the page will reload quickly.
+    // Let's keep showing the prompt only if offlineReady is true (for first offline cache).
+
     if (!offlineReady && !needRefresh) return null;
 
     return (
@@ -28,12 +65,12 @@ export default function ReloadPrompt() {
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                         <h3 className="font-bold text-sm text-text-primary mb-1">
-                            {offlineReady ? 'アプリの準備完了' : '新しいバージョンが利用可能です'}
+                            {needRefresh ? '更新しています...' : 'アプリの準備完了'}
                         </h3>
                         <p className="text-xs text-text-muted leading-relaxed">
-                            {offlineReady
-                                ? 'オフラインでも使用できるようになりました。'
-                                : '更新するには「再読み込み」をタップしてください。'}
+                            {needRefresh
+                                ? '最新バージョンを適用中です。'
+                                : 'オフラインでも使用できるようになりました。'}
                         </p>
                     </div>
                     <button
@@ -43,15 +80,6 @@ export default function ReloadPrompt() {
                         <X size={16} />
                     </button>
                 </div>
-                {needRefresh && (
-                    <button
-                        onClick={() => updateServiceWorker(true)}
-                        className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-primary text-text-primary font-bold text-sm rounded-lg hover:opacity-90 transition-opacity"
-                    >
-                        <RefreshCw size={14} className="animate-spin-slow" />
-                        再読み込みして更新
-                    </button>
-                )}
             </div>
         </div>
     );
